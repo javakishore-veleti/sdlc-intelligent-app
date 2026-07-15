@@ -27,22 +27,22 @@ Two portals serve two persona groups:
 
 | Portal | Users | Purpose |
 |---|---|---|
-| **SoftwareDev-Admin** | Administrators | Register applications; define sprints and agendas |
-| **RequirementsEngineering** | Developers, Product Owners, Product Managers, Project Managers | Upload sprint PDFs, browse applications/sprints, and ask the assistant |
+| **sdlc-admin** | Administrators | Register applications; define sprints and agendas |
+| **sdlc-nexus** | Developers, Product Owners, Product Managers, Project Managers | Upload sprint PDFs, browse applications/sprints, and ask the assistant |
 
 ## Architecture at a glance
 
 ```
-Angular portals (admin + requirements-engineering)
+Angular portals (sdlc-admin + sdlc-nexus)
         │  REST/JSON
 FastAPI middleware
-   MasterDataAPI · DevLifeCycleAPI · Ingest-API · QnA-API
+   Master-Data-Service · Workspace-Service · Ingest-Extract-Service · Knowledge-Service
         │
 Apache Airflow (ingestion) ──► ChromaDB (vectors + metadata)
 PostgreSQL (master data)          LangChain RAG ──► LLM (local or hosted)
 ```
 
-- **Separation of planes** — `MasterDataAPI` (admin writes) vs. `DevLifeCycleAPI`
+- **Separation of planes** — `Master-Data-Service` (admin writes) vs. `Workspace-Service`
   (customer reads).
 - **Pluggable ingestion source** — manual portal entry now; an automated source can
   plug into the same interface later.
@@ -54,8 +54,9 @@ PostgreSQL (master data)          LangChain RAG ──► LLM (local or hosted)
 ```
 sdlc-intelligent-app/
 ├── PRD.md                          # full Product Requirements Document
-├── portals/                        # Angular front-ends (admin + requirements-engineering)
-├── Middleware/                     # FastAPI services (MasterData, DevLifeCycle, Ingest, QnA)
+├── Portals/                        # Angular front-ends (sdlc-admin + sdlc-nexus)
+├── Middleware/                     # FastAPI services (Master-Data, Workspace, Ingest-Extract, Knowledge)
+├── cicd/Local/                     # docker-all-up / -down / -status scripts
 ├── airflow/                        # ingestion DAG(s): parse → chunk → embed → ChromaDB
 ├── corpus/                         # synthetic sample sprint documents
 ├── infra/                          # container/compose definitions, env templates

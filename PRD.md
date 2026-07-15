@@ -132,13 +132,13 @@ feature*.
 
 The platform serves two portals and two broad persona groups.
 
-### 4.1 Administrator (SoftwareDev-Admin portal)
+### 4.1 Administrator (sdlc-admin portal)
 
 Responsible for **master data**: registering business applications (microservices)
 and defining their sprints and agendas. Administrators set up the SDLC scaffolding
 that all uploaded documents attach to.
 
-### 4.2 Customer (RequirementsEngineering portal)
+### 4.2 Customer (sdlc-nexus portal)
 
 > **Definition — "Customer".** In this product, a **Customer** is any internal
 > platform user in one of the following roles:
@@ -324,7 +324,7 @@ Requirements are grouped by capability. Each has an ID and acceptance criteria (
 ```
 ┌───────────────────────────── PORTALS (Angular) ─────────────────────────────┐
 │                                                                              │
-│   SoftwareDev-Admin portal              RequirementsEngineering portal       │
+│   sdlc-admin portal                     sdlc-nexus portal                     │
 │   • Business Application mgmt            • Upload sprint PDFs                  │
 │   • Sprint mgmt (agenda)                • Chatbot assistant (Q&A + citations) │
 │                                          • Browse applications / sprints      │
@@ -332,10 +332,11 @@ Requirements are grouped by capability. Each has an ID and acceptance criteria (
                 │ REST/JSON                          │ REST/JSON
         ┌───────▼──────────────────── MIDDLEWARE (FastAPI) ───────────▼────────┐
         │                                                                      │
-        │  MasterDataAPI      DevLifeCycleAPI      Ingest-API      QnA-API      │
-        │  (admin writes)     (customer reads)     (upload →       (LangChain   │
-        │  apps, sprints,     fetch apps &         triggers        retrieval +  │
-        │  agendas            sprints              Airflow)        LLM)         │
+        │  Master-Data-    Workspace-      Ingest-Extract-   Knowledge-        │
+        │  Service         Service         Service           Service           │
+        │  (admin writes)  (customer reads) (upload →         (LangChain        │
+        │  apps, sprints,  fetch apps &     extract →         retrieval +       │
+        │  agendas         sprints          Airflow)          LLM)              │
         └───────┬───────────────────┬──────────────────┬───────────────┬───────┘
                 │                   │                  │               │
           ┌─────▼─────┐       ┌─────▼─────┐      ┌─────▼───────┐  ┌────▼───────┐
@@ -354,35 +355,39 @@ Requirements are grouped by capability. Each has an ID and acceptance criteria (
 
 **Admin — define master data**
 ```
-SoftwareDev-Admin portal → MasterDataAPI → Postgres
+sdlc-admin portal → Master-Data-Service → Postgres
   (create Business Application; define Sprint + agenda)
 ```
 
 **Customer — upload & ingest**
 ```
-RequirementsEngineering portal → Ingest-API → trigger Airflow DAG
+sdlc-nexus portal → Ingest-Extract-Service → trigger Airflow DAG
   → parse PDF → chunk (~2000 tokens) → embed → ChromaDB (+ metadata)
   → update ingestion status (Postgres)
 ```
 
 **Customer — ask (Q&A)**
 ```
-RequirementsEngineering portal → QnA-API → LangChain retriever
+sdlc-nexus portal → Knowledge-Service → LangChain retriever
   → ChromaDB (metadata-filtered similarity search) → LLM
   → grounded answer + citations → portal
 ```
 
 **Customer — browse**
 ```
-RequirementsEngineering portal → DevLifeCycleAPI → Postgres (read)
+sdlc-nexus portal → Workspace-Service → Postgres (read)
   (list applications, sprints, agendas, ingested documents & status)
 ```
 
 ### 9.3 Architectural principles
 
-- **Separation of write and read planes.** `MasterDataAPI` is the administrative
-  command/write plane; `DevLifeCycleAPI` is the customer query/read plane. This keeps
+- **Separation of write and read planes.** `Master-Data-Service` is the administrative
+  command/write plane; `Workspace-Service` is the customer query/read plane. This keeps
   admin operations and customer consumption independently evolvable.
+- **Layered services.** Each `*-Service` follows a consistent layout —
+  `api → facades (+ tasks) → services → dao` — with all cross-layer contracts declared
+  as interfaces under `common/` (`service`, `facade`, `dao`), plus `common/constants`
+  and `utils`.
 - **Pluggable Sprint Source.** Ingestion depends on a `SprintSource` interface. The
   initial release ships a `ManualSource`; alternative sources implement the same
   interface without touching ingestion or RAG logic.
@@ -412,14 +417,17 @@ RequirementsEngineering portal → DevLifeCycleAPI → Postgres (read)
 ```
 sdlc-intelligent-app/
 ├── PRD.md                              # this document
-├── portals/
-│   ├── softwaredev-admin/              # Angular — admin portal
-│   └── requirements-engineering/       # Angular — customer portal (chatbot + upload)
-├── Middleware/
-│   ├── MasterDataAPI/                  # FastAPI — admin writes (apps, sprints, agendas)
-│   ├── DevLifeCycleAPI/                # FastAPI — customer reads (apps, sprints)
-│   ├── Ingest-API/                     # FastAPI — receives upload, triggers Airflow
-│   └── QnA-API/                        # FastAPI — LangChain retrieval + LLM over ChromaDB
+├── README.md                           # project overview
+├── Portals/                            # Angular front-ends
+│   ├── sdlc-admin/                     #   admin portal (apps, sprints, agendas)
+│   └── sdlc-nexus/                     #   customer hub (upload, browse, chatbot)
+├── Middleware/                         # FastAPI microservices (layered — see below)
+│   ├── Master-Data-Service/            #   admin writes (apps, sprints, agendas)
+│   ├── Workspace-Service/              #   customer reads (apps, sprints, documents)
+│   ├── Ingest-Extract-Service/         #   receive PDF, extract, trigger Airflow
+│   └── Knowledge-Service/              #   LangChain retrieval + LLM over ChromaDB
+├── cicd/
+│   └── Local/                          # docker-all-up / -down / -status scripts
 ├── airflow/
 │   └── dags/                           # ingestion DAG(s): parse → chunk → embed → ChromaDB
 ├── corpus/                             # synthetic Digital Sales sample sprint documents
@@ -427,8 +435,25 @@ sdlc-intelligent-app/
 └── docs/                               # architecture, design, and presentation material
 ```
 
-> The `Middleware/` and `portals/` folder names and the service names
-> (`MasterDataAPI`, `DevLifeCycleAPI`, `Ingest-API`, `QnA-API`) are normative and
+**Standard layout inside every `*-Service`:**
+
+```
+<Service>/
+├── api/                  # FastAPI routers / endpoints
+├── facades/              # facade impls; each facade = subpackage with a tasks/ module
+├── services/             # service-layer implementations
+├── dao/                  # DAO implementations
+├── common/
+│   ├── service/interfaces/   # service-layer contracts
+│   ├── facade/interfaces/    # facade-layer contracts
+│   ├── dao/interfaces/       # DAO-layer contracts
+│   └── constants/            # shared constants
+└── utils/                # cross-cutting utilities
+```
+
+> The `Middleware/`, `Portals/`, and service names
+> (`Master-Data-Service`, `Workspace-Service`, `Ingest-Extract-Service`,
+> `Knowledge-Service`) and portal names (`sdlc-admin`, `sdlc-nexus`) are normative and
 > reflected in [§9](#9-system-architecture).
 
 ---
@@ -500,7 +525,7 @@ describe them*.
 
 High-level, representative endpoints (final contracts defined during design of each service).
 
-### 12.1 MasterDataAPI (admin writes)
+### 12.1 Master-Data-Service (admin writes)
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -510,7 +535,7 @@ High-level, representative endpoints (final contracts defined during design of e
 | POST | `/applications/{id}/sprints` | Define a sprint (with agenda) |
 | PUT | `/sprints/{id}` | Update / archive a sprint |
 
-### 12.2 DevLifeCycleAPI (customer reads)
+### 12.2 Workspace-Service (customer reads)
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -518,7 +543,7 @@ High-level, representative endpoints (final contracts defined during design of e
 | GET | `/applications/{id}/sprints` | List sprints + agendas for an application |
 | GET | `/sprints/{id}/documents` | List documents + ingestion status for a sprint |
 
-### 12.3 Ingest-API
+### 12.3 Ingest-Extract-Service
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -526,7 +551,7 @@ High-level, representative endpoints (final contracts defined during design of e
 | POST | `/uploads/{id}/confirm` | Confirm suggested metadata and start ingestion |
 | GET | `/uploads/{id}/status` | Poll ingestion status |
 
-### 12.4 QnA-API
+### 12.4 Knowledge-Service
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -548,7 +573,7 @@ High-level, representative endpoints (final contracts defined during design of e
 Idempotency: re-ingesting the same document version replaces its existing chunks
 rather than appending duplicates (keyed by `document_id` + `version`).
 
-### 13.2 Retrieval and answering (QnA-API)
+### 13.2 Retrieval and answering (Knowledge-Service)
 
 1. **Filter** — apply metadata filters from the request (application, sprint range).
 2. **Retrieve** — semantic similarity search over ChromaDB for top-k relevant chunks.
