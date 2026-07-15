@@ -1,0 +1,46 @@
+# ---- Python / FastAPI ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- Environment / secrets ----
+.env
+.env.*
+!.env.example
+*.local
+
+# ---- Node / Angular ----
+node_modules/
+dist/
+.angular/
+npm-debug.log*
+yarn-error.log*
+
+# ---- Airflow ----
+airflow/logs/
+airflow.db
+airflow.cfg
+standalone_admin_password.txt
+
+# ---- Data stores / runtime artifacts ----
+data/
+chroma/
+*.sqlite3
+*.db
+postgres-data/
+
+# ---- Uploaded documents (runtime) ----
+uploads/
+
+# ---- IDE / OS ----
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
