@@ -9,12 +9,14 @@ Interactive API docs (OpenAPI / Swagger) are served at:
     /openapi.json  raw OpenAPI schema
 """
 import logging
+import os
 import pathlib
 from contextlib import asynccontextmanager
 
 from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from api.dashboard_router import router as dashboard_router
 from api.routes import api_router
@@ -70,6 +72,19 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+)
+
+# CORS: allow the admin portal (Angular dev server) to call this API.
+# Override with a comma-separated CORS_ALLOW_ORIGINS env var in other environments.
+_cors_origins = os.getenv(
+    "CORS_ALLOW_ORIGINS", "http://localhost:4200,http://127.0.0.1:4200"
+).split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _cors_origins if o.strip()],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(api_router, prefix=API_V1_PREFIX)
