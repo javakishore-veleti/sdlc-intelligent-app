@@ -16,6 +16,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI
 
+from api.dashboard_router import router as dashboard_router
 from api.routes import api_router
 from common.constants.constants import API_V1_PREFIX, SERVICE_NAME, SERVICE_VERSION
 
@@ -52,6 +53,7 @@ tags_metadata = [
     {"name": "Project Dependencies", "description": "Dependencies on other projects' capabilities."},
     {"name": "Project Client Groups", "description": "Groupings of client relationships."},
     {"name": "Project Clients", "description": "Other projects consuming this project's capabilities."},
+    {"name": "Dashboard", "description": "Aggregate statistics (cached, 6h configurable TTL)."},
     {"name": "health", "description": "Service liveness."},
 ]
 
@@ -71,6 +73,7 @@ app = FastAPI(
 )
 
 app.include_router(api_router, prefix=API_V1_PREFIX)
+app.include_router(dashboard_router, prefix=API_V1_PREFIX)
 
 
 @app.get("/health", tags=["health"])
