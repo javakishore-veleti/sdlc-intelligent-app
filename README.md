@@ -55,11 +55,10 @@ PostgreSQL (master data)          LangChain RAG ──► LLM (local or hosted)
 sdlc-intelligent-app/
 ├── PRD.md                          # full Product Requirements Document
 ├── Portals/                        # Angular front-ends (sdlc-admin + sdlc-nexus)
-├── Middleware/                     # FastAPI services (Master-Data, Workspace, Ingest-Extract, Knowledge)
+├── Middleware/                     # FastAPI services + SDLC-Workflows (Airflow DAGs)
 ├── cicd/Local/                     # docker-all-up / -down / -status scripts
-├── airflow/                        # ingestion DAG(s): parse → chunk → embed → ChromaDB
 ├── corpus/                         # synthetic sample sprint documents
-├── infra/                          # container/compose definitions, env templates
+├── infra/                          # docker-compose stack (Postgres, Chroma, Airflow, …)
 └── docs/                           # architecture, design, and presentation material
 ```
 

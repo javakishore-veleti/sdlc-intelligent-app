@@ -425,13 +425,12 @@ sdlc-intelligent-app/
 │   ├── Master-Data-Service/            #   admin writes (apps, sprints, agendas)
 │   ├── Workspace-Service/              #   customer reads (apps, sprints, documents)
 │   ├── Ingest-Extract-Service/         #   receive PDF, extract, trigger Airflow
-│   └── Knowledge-Service/              #   LangChain retrieval + LLM over ChromaDB
+│   ├── Knowledge-Service/              #   LangChain retrieval + LLM over ChromaDB
+│   └── SDLC-Workflows/                 #   Airflow DAGs (ingestion into ChromaDB)
 ├── cicd/
 │   └── Local/                          # docker-all-up / -down / -status scripts
-├── airflow/
-│   └── dags/                           # ingestion DAG(s): parse → chunk → embed → ChromaDB
 ├── corpus/                             # synthetic Digital Sales sample sprint documents
-├── infra/                              # container/compose definitions, env templates
+├── infra/                              # docker-compose stack (Postgres, Chroma, Airflow, …)
 └── docs/                               # architecture, design, and presentation material
 ```
 
