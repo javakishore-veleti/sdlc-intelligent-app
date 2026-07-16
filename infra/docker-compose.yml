@@ -109,6 +109,24 @@ services:
       postgres:
         condition: service_healthy
 
+  # ------------------------------------------------------------- Knowledge-Service ---
+  knowledge-service:
+    build:
+      context: ../Middleware/Knowledge-Service
+    environment:
+      CHROMA_MODE: http
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: "8000"
+      EMBEDDING_DIM: "256"
+      DEFAULT_FRAMEWORK: langchain
+      DEFAULT_STRATEGY: recursive_char_2000_200
+      ANSWER_BACKEND: extractive
+      CORS_ALLOW_ORIGINS: "http://localhost:4200,http://127.0.0.1:4200"
+    ports:
+      - "8004:8004"
+    depends_on:
+      - chromadb
+
   # ------------------------------------------------------------------- Airflow -------
   airflow-init:
     <<: *airflow-common

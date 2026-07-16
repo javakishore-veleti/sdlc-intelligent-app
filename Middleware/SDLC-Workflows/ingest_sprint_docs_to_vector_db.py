@@ -92,7 +92,9 @@ def _upsert_to_chroma(collection_name: str, chunks: list[str], base_meta: dict) 
     client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
     collection = client.get_or_create_collection(collection_name)
     ids = [f"{base_meta.get('ref_id', 'doc')}-{i}" for i in range(len(chunks))]
-    metadatas = [{**base_meta, "chunk_index": i} for i in range(len(chunks))]
+    # Chroma metadata values must be str/int/float/bool (no None).
+    clean_meta = {k: v for k, v in base_meta.items() if v is not None}
+    metadatas = [{**clean_meta, "chunk_index": i} for i in range(len(chunks))]
     embeddings = [_deterministic_embedding(c) for c in chunks]
     collection.upsert(ids=ids, documents=chunks, embeddings=embeddings, metadatas=metadatas)
     return len(chunks)
