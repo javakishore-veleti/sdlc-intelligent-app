@@ -73,6 +73,20 @@ services:
       postgres:
         condition: service_healthy
 
+  # -------------------------------------------------------------- Workspace-Service --
+  workspace-service:
+    build:
+      context: ../Middleware/Workspace-Service
+    environment:
+      DATABASE_URL: postgresql+psycopg2://sdlc:sdlc@postgres:5432/workspace
+      ADMIN_EMAILS: admin@example.com
+      CORS_ALLOW_ORIGINS: "http://localhost:4200,http://127.0.0.1:4200"
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # -------------------------------------------------------- Ingest-Extract-Service ---
   ingest-extract-service:
     build:
