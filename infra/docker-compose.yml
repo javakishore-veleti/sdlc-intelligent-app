@@ -15,6 +15,8 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
     AIRFLOW__WEBSERVER__SECRET_KEY: "sdlc-dev-secret"
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+    # Enable basic-auth on the REST API so Ingest-Extract-Service can trigger DAGs.
+    AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
     # Config consumed by the ingestion DAG:
     INGEST_DATABASE_URL: postgresql+psycopg2://sdlc:sdlc@postgres:5432/ingest
     CHROMA_HOST: chromadb
@@ -56,7 +58,9 @@ services:
     image: chromadb/chroma:latest
     pull_policy: missing
     ports:
-      - "8000:8000"
+      # Host 8010 -> container 8000 (8000 may be taken by another local Chroma).
+      # Services reach it in-network as chromadb:8000 regardless.
+      - "8010:8000"
     volumes:
       - chroma-data:/data
 

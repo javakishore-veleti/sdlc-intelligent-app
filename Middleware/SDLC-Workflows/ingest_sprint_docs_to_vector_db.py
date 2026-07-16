@@ -119,15 +119,15 @@ def ingest_sprint_docs_to_vector_db():
         return conf
 
     @task
-    def extract_text(conf: dict) -> dict:
+    def extract_text(run_conf: dict) -> dict:
         from pypdf import PdfReader
 
-        path = conf.get("document_path")
+        path = run_conf.get("document_path")
         log.info("Extracting text from %s with pypdf", path)
         reader = PdfReader(path)
         pages = [(page.extract_text() or "") for page in reader.pages]
         return {
-            "conf": conf,
+            "conf": run_conf,
             "text": "\n".join(pages),
             "num_pages": len(pages),
         }
