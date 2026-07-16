@@ -15,10 +15,18 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
     AIRFLOW__WEBSERVER__SECRET_KEY: "sdlc-dev-secret"
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+    # Config consumed by the ingestion DAG:
+    INGEST_DATABASE_URL: postgresql+psycopg2://sdlc:sdlc@postgres:5432/ingest
+    CHROMA_HOST: chromadb
+    CHROMA_PORT: "8000"
+    # Python deps the DAG needs (installed at container start).
+    _PIP_ADDITIONAL_REQUIREMENTS: "pypdf langchain-text-splitters langchain-core langgraph chromadb"
   volumes:
     # DAGs live in Middleware/SDLC-Workflows and are mounted as Airflow's DAG folder.
     - ../Middleware/SDLC-Workflows:/opt/airflow/dags
     - airflow-logs:/opt/airflow/logs
+    # Shared datalake so the DAG can read files written by Ingest-Extract-Service.
+    - datalake:/data/datalake-root
   depends_on:
     postgres:
       condition: service_healthy
@@ -61,6 +69,28 @@ services:
       CORS_ALLOW_ORIGINS: "http://localhost:4200,http://127.0.0.1:4200"
     ports:
       - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # -------------------------------------------------------- Ingest-Extract-Service ---
+  ingest-extract-service:
+    build:
+      context: ../Middleware/Ingest-Extract-Service
+    environment:
+      DATABASE_URL: postgresql+psycopg2://sdlc:sdlc@postgres:5432/ingest
+      DATALAKE_BASE_PATH: /data/datalake-root
+      STORAGE_BACKEND: local
+      AIRFLOW_BASE_URL: http://airflow-webserver:8080
+      AIRFLOW_DAG_ID: ingest_sprint_docs_to_vector_db
+      AIRFLOW_USERNAME: admin
+      AIRFLOW_PASSWORD: admin
+      AIRFLOW_TRIGGER_ENABLED: "true"
+      CORS_ALLOW_ORIGINS: "http://localhost:4200,http://127.0.0.1:4200"
+    ports:
+      - "8003:8003"
+    volumes:
+      - datalake:/data/datalake-root
     depends_on:
       postgres:
         condition: service_healthy
@@ -118,3 +148,4 @@ volumes:
   postgres-data:
   chroma-data:
   airflow-logs:
+  datalake:

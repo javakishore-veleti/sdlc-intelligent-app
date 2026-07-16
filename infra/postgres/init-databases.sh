@@ -7,6 +7,7 @@ set -e
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
   CREATE DATABASE master_data;
   CREATE DATABASE airflow;
+  CREATE DATABASE ingest;
 EOSQL
 
-echo "Created databases: master_data, airflow"
+echo "Created databases: master_data, airflow, ingest"
